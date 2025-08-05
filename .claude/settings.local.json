@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx ts-node:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(mv:*)",
+      "Bash(open:*)",
+      "Bash(npm install)",
+      "Bash(npm run server:*)"
+    ],
+    "deny": []
+  }
+}

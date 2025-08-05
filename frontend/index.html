@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lovable Clone - AI Web App Builder</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="logo">
+                    <span class="logo-icon">🚀</span>
+                    Lovable Clone
+                </h1>
+                <p class="tagline">Build web apps with AI - powered by Claude Code</p>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Input Section -->
+            <section class="input-section">
+                <div class="input-container">
+                    <label for="prompt-input" class="input-label">
+                        What would you like to build?
+                    </label>
+                    <div class="input-group">
+                        <textarea 
+                            id="prompt-input" 
+                            class="prompt-input" 
+                            placeholder="Describe your web app idea... (e.g., 'Create a todo app with drag and drop functionality')"
+                            rows="3"
+                        ></textarea>
+                        <button id="generate-btn" class="generate-btn" type="button">
+                            <span class="btn-icon">✨</span>
+                            <span class="btn-text">Generate App</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Progress Section -->
+                <section class="progress-section">
+                    <div class="progress-header">
+                        <h2 class="progress-title">
+                            <span class="progress-icon">📋</span>
+                            Generation Progress
+                        </h2>
+                        <div class="progress-status" id="progress-status">Ready</div>
+                    </div>
+                    <div class="progress-content">
+                        <div class="progress-log" id="progress-log">
+                            <div class="log-entry welcome">
+                                <span class="log-icon">👋</span>
+                                <span class="log-text">Welcome! Enter your app idea and click "Generate App" to get started.</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Preview Section -->
+                <section class="preview-section">
+                    <div class="preview-header">
+                        <h2 class="preview-title">
+                            <span class="preview-icon">🖥️</span>
+                            Live Preview
+                        </h2>
+                        <div class="preview-controls">
+                            <button id="refresh-btn" class="control-btn" title="Refresh Preview">
+                                <span>🔄</span>
+                            </button>
+                            <button id="fullscreen-btn" class="control-btn" title="Open in New Tab">
+                                <span>🔗</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="preview-content">
+                        <iframe 
+                            id="preview-iframe" 
+                            class="preview-iframe"
+                            src="about:blank"
+                            title="Generated App Preview"
+                        ></iframe>
+                        <div class="preview-placeholder" id="preview-placeholder">
+                            <div class="placeholder-content">
+                                <div class="placeholder-icon">🎨</div>
+                                <h3>Your app will appear here</h3>
+                                <p>Generate an app to see the live preview</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loading-overlay">
+            <div class="loading-spinner"></div>
+            <p class="loading-text">Generating your app...</p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
