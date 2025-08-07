@@ -45,7 +45,7 @@
 
             <!-- Content Area -->
             <div class="content-area">
-                <!-- Progress Section -->
+                <!-- Left Sidebar - Progress -->
                 <section class="progress-section">
                     <div class="progress-header">
                         <h2 class="progress-title">
@@ -64,7 +64,7 @@
                     </div>
                 </section>
 
-                <!-- Preview Section -->
+                <!-- Right Main Area - Preview -->
                 <section class="preview-section">
                     <div class="preview-header">
                         <h2 class="preview-title">
@@ -94,6 +94,32 @@
                                 <p>Generate an app to see the live preview</p>
                             </div>
                         </div>
+                    </div>
+                </section>
+
+                <!-- Bottom Full Width - Verbose Logs -->
+                <section class="verbose-log-section">
+                    <div class="verbose-log-header">
+                        <h2 class="verbose-log-title">
+                            <span class="verbose-log-icon">🔍</span>
+                            Verbose Logs
+                        </h2>
+                        <div class="verbose-log-controls">
+                            <button id="clear-logs-btn" class="control-btn" title="Clear Logs">
+                                <span>🗑️</span>
+                            </button>
+                            <button id="copy-logs-btn" class="control-btn" title="Copy Logs">
+                                <span>📋</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="verbose-log-content">
+                        <textarea 
+                            id="verbose-log" 
+                            class="verbose-log-textarea" 
+                            readonly
+                            placeholder="Verbose generation logs and error messages will appear here..."
+                        ></textarea>
                     </div>
                 </section>
             </div>

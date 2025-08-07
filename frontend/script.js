@@ -14,11 +14,15 @@ class LovableClone {
         const generateBtn = document.getElementById('generate-btn');
         const refreshBtn = document.getElementById('refresh-btn');
         const fullscreenBtn = document.getElementById('fullscreen-btn');
+        const clearLogsBtn = document.getElementById('clear-logs-btn');
+        const copyLogsBtn = document.getElementById('copy-logs-btn');
         const promptInput = document.getElementById('prompt-input');
 
         generateBtn.addEventListener('click', () => this.handleGenerate());
         refreshBtn.addEventListener('click', () => this.refreshPreview());
         fullscreenBtn.addEventListener('click', () => this.openInNewTab());
+        clearLogsBtn.addEventListener('click', () => this.clearVerboseLogs());
+        copyLogsBtn.addEventListener('click', () => this.copyVerboseLogs());
         
         // Allow Enter + Shift to submit
         promptInput.addEventListener('keydown', (e) => {
@@ -41,8 +45,10 @@ class LovableClone {
         this.setGenerating(true);
         this.clearPreview();
         this.addLogEntry('info', `🚀 Starting generation: "${prompt}"`);
+        this.addVerboseLog(`Starting generation request for prompt: "${prompt}"`);
 
         try {
+            this.addVerboseLog('Sending POST request to /api/generate');
             const response = await fetch('/api/generate', {
                 method: 'POST',
                 headers: {
@@ -52,16 +58,19 @@ class LovableClone {
             });
 
             const data = await response.json();
+            this.addVerboseLog(`Server response: ${JSON.stringify(data, null, 2)}`);
 
             if (response.ok) {
                 this.currentGenerationId = data.generationId;
                 this.addLogEntry('success', '✅ Generation started successfully');
+                this.addVerboseLog(`Generation started with ID: ${data.generationId}`);
                 this.startPolling();
             } else {
                 throw new Error(data.error || 'Failed to start generation');
             }
         } catch (error) {
             this.addLogEntry('error', `❌ Error: ${error.message}`);
+            this.addVerboseLog(`Error in handleGenerate: ${error.message}`, true);
             this.setGenerating(false);
         }
     }
@@ -75,22 +84,29 @@ class LovableClone {
             if (!this.currentGenerationId) return;
 
             try {
+                this.addVerboseLog(`Polling status for generation ID: ${this.currentGenerationId}`);
                 const response = await fetch(`/api/status/${this.currentGenerationId}`);
                 const data = await response.json();
+                this.addVerboseLog(`Status response: ${JSON.stringify(data, null, 2)}`);
 
                 if (response.ok) {
                     this.updateProgress(data);
                     
                     if (data.status === 'completed' || data.status === 'error') {
+                        this.addVerboseLog(`Generation finished with status: ${data.status}`);
                         this.stopPolling();
                         this.setGenerating(false);
                         
                         if (data.status === 'completed' && data.projectPath) {
+                            this.addVerboseLog(`Loading project from: ${data.projectPath}`);
                             await this.loadProject(data.projectPath);
                         }
                     }
+                } else {
+                    this.addVerboseLog(`Status request failed: ${response.status} ${response.statusText}`, true);
                 }
             } catch (error) {
+                this.addVerboseLog(`Polling error: ${error.message}`, true);
                 console.error('Polling error:', error);
             }
         }, 2000); // Poll every 2 seconds
@@ -122,6 +138,19 @@ class LovableClone {
                     this.addLogEntry(entry.type, entry.message, false);
                 }
             }
+        }
+
+        // Update verbose logs from backend
+        if (data.verboseLogs && data.verboseLogs.length > 0) {
+            const verboseLog = document.getElementById('verbose-log');
+            
+            // Clear existing logs and add new ones (simple approach)
+            const newLogContent = data.verboseLogs.map(log => 
+                `${log.timestamp} [${log.level}] ${log.message}`
+            ).join('\n');
+            
+            verboseLog.value = newLogContent;
+            verboseLog.scrollTop = verboseLog.scrollHeight;
         }
     }
 
@@ -266,6 +295,32 @@ class LovableClone {
             ready: 'Ready'
         };
         return statusMap[status] || status;
+    }
+
+    addVerboseLog(message, isError = false) {
+        const verboseLog = document.getElementById('verbose-log');
+        const timestamp = new Date().toISOString();
+        const prefix = isError ? '[ERROR]' : '[INFO]';
+        const logEntry = `${timestamp} ${prefix} ${message}\n`;
+        
+        verboseLog.value += logEntry;
+        verboseLog.scrollTop = verboseLog.scrollHeight;
+    }
+
+    clearVerboseLogs() {
+        const verboseLog = document.getElementById('verbose-log');
+        verboseLog.value = '';
+        this.addVerboseLog('Logs cleared by user');
+    }
+
+    async copyVerboseLogs() {
+        const verboseLog = document.getElementById('verbose-log');
+        try {
+            await navigator.clipboard.writeText(verboseLog.value);
+            this.addLogEntry('success', '📋 Logs copied to clipboard');
+        } catch (error) {
+            this.addLogEntry('error', '❌ Failed to copy logs to clipboard');
+        }
     }
 }
 

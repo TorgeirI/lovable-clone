@@ -2,59 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
-// Import the generator function - we'll create a CommonJS wrapper
-const { spawn } = require('child_process');
-const util = require('util');
 
-// Helper function to run the TypeScript generator
-async function generateWithClaude(prompt) {
-    return new Promise((resolve, reject) => {
-        const process = spawn('npx', ['ts-node', '-e', `
-            const { generateWithClaude } = require('./src/generator');
-            generateWithClaude('${prompt.replace(/'/g, "\\'")}')
-                .then(result => console.log(JSON.stringify(result)))
-                .catch(err => console.error(JSON.stringify({success: false, error: err.message})));
-        `], { 
-            cwd: path.join(__dirname, '..'),
-            stdio: ['pipe', 'pipe', 'pipe']
-        });
-
-        let output = '';
-        let errorOutput = '';
-
-        process.stdout.on('data', (data) => {
-            output += data.toString();
-        });
-
-        process.stderr.on('data', (data) => {
-            errorOutput += data.toString();
-        });
-
-        process.on('close', (code) => {
-            if (code === 0) {
-                try {
-                    // Find the last JSON object in the output (the result)
-                    const lines = output.trim().split('\n');
-                    const resultLine = lines[lines.length - 1];
-                    const result = JSON.parse(resultLine);
-                    resolve(result);
-                } catch (err) {
-                    resolve({
-                        success: false,
-                        error: 'Failed to parse generation result',
-                        rawOutput: output
-                    });
-                }
-            } else {
-                resolve({
-                    success: false,
-                    error: `Generation process failed with code ${code}`,
-                    stderr: errorOutput
-                });
-            }
-        });
-    });
-}
+// Import the compiled generator function directly
+const { generateWithClaude } = require('../dist/generator.js');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -110,7 +60,8 @@ app.get('/api/status/:generationId', (req, res) => {
         status: generation.status,
         progress: generation.progress,
         projectPath: generation.projectPath,
-        startTime: generation.startTime
+        startTime: generation.startTime,
+        verboseLogs: generation.verboseLogs || []
     });
 });
 
@@ -157,8 +108,39 @@ async function generateProject(generationId, prompt) {
             message: `🚀 Starting generation for: "${prompt}"`
         });
 
+        // Add detailed logging for backend process
+        generation.verboseLogs = generation.verboseLogs || [];
+        generation.verboseLogs.push({
+            timestamp: new Date().toISOString(),
+            level: 'INFO',
+            message: `Backend: Starting generation process for prompt: "${prompt}"`
+        });
+
+        generation.verboseLogs.push({
+            timestamp: new Date().toISOString(),
+            level: 'INFO',
+            message: `Backend: Calling generateWithClaude function`
+        });
+
         // Use existing generator function
         const result = await generateWithClaude(prompt);
+
+        // Log all messages from the generation result
+        if (result.messages && result.messages.length > 0) {
+            generation.verboseLogs.push({
+                timestamp: new Date().toISOString(),
+                level: 'INFO',
+                message: `Backend: Received ${result.messages.length} messages from Claude Code SDK`
+            });
+            
+            result.messages.forEach((msg, index) => {
+                generation.verboseLogs.push({
+                    timestamp: new Date().toISOString(),
+                    level: 'DEBUG',
+                    message: `Claude Message ${index + 1}: ${JSON.stringify(msg, null, 2)}`
+                });
+            });
+        }
 
         if (result.success) {
             generation.status = 'completed';
@@ -173,12 +155,22 @@ async function generateProject(generationId, prompt) {
                 type: 'info',
                 message: `📁 Project created at: ${result.outputDirectory}`
             });
+            generation.verboseLogs.push({
+                timestamp: new Date().toISOString(),
+                level: 'INFO',
+                message: `Backend: Generation completed successfully. Project path: ${result.outputDirectory}`
+            });
         } else {
             generation.status = 'error';
             generation.progress.push({
                 timestamp: new Date(),
                 type: 'error',
                 message: `❌ Generation failed: ${result.error}`
+            });
+            generation.verboseLogs.push({
+                timestamp: new Date().toISOString(),
+                level: 'ERROR',
+                message: `Backend: Generation failed with error: ${result.error}`
             });
         }
     } catch (error) {
@@ -187,6 +179,17 @@ async function generateProject(generationId, prompt) {
             timestamp: new Date(),
             type: 'error',
             message: `❌ Unexpected error: ${error.message}`
+        });
+        generation.verboseLogs = generation.verboseLogs || [];
+        generation.verboseLogs.push({
+            timestamp: new Date().toISOString(),
+            level: 'ERROR',
+            message: `Backend: Unexpected error in generateProject: ${error.message}`
+        });
+        generation.verboseLogs.push({
+            timestamp: new Date().toISOString(),
+            level: 'ERROR',
+            message: `Backend: Error stack trace: ${error.stack}`
         });
     }
 }

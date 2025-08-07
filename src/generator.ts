@@ -38,17 +38,14 @@ async function generateWithClaude(prompt: string): Promise<GenerationResult> {
     console.log(`🚀 Starting generation for: "${prompt}"`);
     console.log(`📁 Project directory: ${path.resolve(projectDir)}\n`);
 
-    // Configure Claude Code SDK with proper permissions
-    const options = {
-      workingDirectory: path.resolve(projectDir),
-      maxTurns: 10, // Increased for complex projects like chess boards
-      permissionMode: 'acceptEdits' as any, // Accept all file operations
-    };
-
-    // Send prompt to Claude Code SDK
+    // Send prompt to Claude Code SDK with permission mode configuration
     const response = query({
-      prompt: `Generate code for: ${prompt}. Create all necessary files and make it functional. Use modern, clean code with proper structure.`,
-      options: options
+      prompt: `Generate code for: ${prompt}. Create all necessary files and make it functional. Use modern, clean code with proper structure. Work in the directory: ${path.resolve(projectDir)}`,
+      options: {
+        cwd: path.resolve(projectDir),
+        permissionMode: 'acceptEdits',
+        maxTurns: 10
+      }
     });
 
     // Stream and collect results
