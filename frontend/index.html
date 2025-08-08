@@ -45,20 +45,51 @@
 
             <!-- Content Area -->
             <div class="content-area">
-                <!-- Left Sidebar - Progress -->
-                <section class="progress-section">
-                    <div class="progress-header">
-                        <h2 class="progress-title">
-                            <span class="progress-icon">📋</span>
-                            Generation Progress
-                        </h2>
-                        <div class="progress-status" id="progress-status">Ready</div>
+                <!-- Left Sidebar - Progress and Projects -->
+                <section class="sidebar-section">
+                    <!-- Progress Panel -->
+                    <div class="panel progress-panel">
+                        <div class="panel-header">
+                            <h2 class="panel-title">
+                                <span class="panel-icon">📋</span>
+                                Generation Progress
+                            </h2>
+                            <div class="progress-status" id="progress-status">Ready</div>
+                        </div>
+                        <div class="panel-content">
+                            <div class="progress-log" id="progress-log">
+                                <div class="log-entry welcome">
+                                    <span class="log-icon">👋</span>
+                                    <span class="log-text">Welcome! Enter your app idea and click "Generate App" to get started.</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="progress-content">
-                        <div class="progress-log" id="progress-log">
-                            <div class="log-entry welcome">
-                                <span class="log-icon">👋</span>
-                                <span class="log-text">Welcome! Enter your app idea and click "Generate App" to get started.</span>
+
+                    <!-- Projects Panel -->
+                    <div class="panel projects-panel">
+                        <div class="panel-header">
+                            <h2 class="panel-title">
+                                <span class="panel-icon">📁</span>
+                                Generated Projects
+                            </h2>
+                            <div class="panel-controls">
+                                <button id="refresh-projects-btn" class="control-btn" title="Refresh Projects">
+                                    <span>🔄</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="panel-content">
+                            <div class="projects-list" id="projects-list">
+                                <div class="projects-loading" id="projects-loading">
+                                    <span class="loading-icon">⏳</span>
+                                    <span>Loading projects...</span>
+                                </div>
+                                <div class="projects-empty hidden" id="projects-empty">
+                                    <span class="empty-icon">📂</span>
+                                    <span>No projects yet</span>
+                                    <small>Generate your first project above!</small>
+                                </div>
                             </div>
                         </div>
                     </div>

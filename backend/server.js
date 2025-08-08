@@ -79,15 +79,34 @@ app.get('/api/projects', (req, res) => {
         })
         .map(projectName => {
             const projectPath = path.join(outputDir, projectName);
+            const stats = fs.statSync(projectPath);
             const htmlFiles = fs.readdirSync(projectPath).filter(file => file.endsWith('.html'));
+            
+            // Find the best entry point (index.html preferred, otherwise first HTML file)
+            let entryPoint = null;
+            if (htmlFiles.includes('index.html')) {
+                entryPoint = 'index.html';
+            } else if (htmlFiles.length > 0) {
+                entryPoint = htmlFiles[0];
+            }
             
             return {
                 name: projectName,
                 path: `/output/${projectName}`,
-                entryPoint: htmlFiles.length > 0 ? htmlFiles[0] : null,
-                url: htmlFiles.length > 0 ? `/output/${projectName}/${htmlFiles[0]}` : null
+                entryPoint: entryPoint,
+                url: entryPoint ? `/output/${projectName}/${entryPoint}` : null,
+                createdAt: stats.birthtime.toISOString(),
+                modifiedAt: stats.mtime.toISOString(),
+                fileCount: fs.readdirSync(projectPath).length,
+                hasFiles: {
+                    html: htmlFiles.length > 0,
+                    css: fs.readdirSync(projectPath).some(file => file.endsWith('.css')),
+                    js: fs.readdirSync(projectPath).some(file => file.endsWith('.js')),
+                    ts: fs.readdirSync(projectPath).some(file => file.endsWith('.ts'))
+                }
             };
-        });
+        })
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Sort by creation date, newest first
 
     res.json({ projects });
 });

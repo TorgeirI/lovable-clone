@@ -2,12 +2,17 @@ class LovableClone {
     constructor() {
         this.currentGenerationId = null;
         this.pollInterval = null;
+        this.selectedProject = null;
+        this.projects = [];
         this.init();
     }
 
     init() {
         this.bindEvents();
-        this.loadExistingProjects();
+        // Use setTimeout to ensure DOM is fully ready
+        setTimeout(() => {
+            this.loadExistingProjects();
+        }, 100);
     }
 
     bindEvents() {
@@ -16,6 +21,7 @@ class LovableClone {
         const fullscreenBtn = document.getElementById('fullscreen-btn');
         const clearLogsBtn = document.getElementById('clear-logs-btn');
         const copyLogsBtn = document.getElementById('copy-logs-btn');
+        const refreshProjectsBtn = document.getElementById('refresh-projects-btn');
         const promptInput = document.getElementById('prompt-input');
 
         generateBtn.addEventListener('click', () => this.handleGenerate());
@@ -23,6 +29,7 @@ class LovableClone {
         fullscreenBtn.addEventListener('click', () => this.openInNewTab());
         clearLogsBtn.addEventListener('click', () => this.clearVerboseLogs());
         copyLogsBtn.addEventListener('click', () => this.copyVerboseLogs());
+        refreshProjectsBtn.addEventListener('click', () => this.loadProjects());
         
         // Allow Enter + Shift to submit
         promptInput.addEventListener('keydown', (e) => {
@@ -100,6 +107,8 @@ class LovableClone {
                         if (data.status === 'completed' && data.projectPath) {
                             this.addVerboseLog(`Loading project from: ${data.projectPath}`);
                             await this.loadProject(data.projectPath);
+                            // Refresh project list to show the new project
+                            await this.loadProjects();
                         }
                     }
                 } else {
@@ -174,16 +183,266 @@ class LovableClone {
     }
 
     async loadExistingProjects() {
+        // Call the new loadProjects method
+        try {
+            await this.loadProjects();
+        } catch (error) {
+            console.error('Error in loadExistingProjects:', error);
+        }
+    }
+
+    async loadProjects() {
+        const loadingEl = document.getElementById('projects-loading');
+        const emptyEl = document.getElementById('projects-empty');
+        const listEl = document.getElementById('projects-list');
+        
+        if (!loadingEl || !emptyEl || !listEl) {
+            console.error('Required project list elements not found');
+            return;
+        }
+        
+        // Show loading state
+        loadingEl.classList.remove('hidden');
+        emptyEl.classList.add('hidden');
+        
+        // Clear existing project items
+        const existingItems = listEl.querySelectorAll('.project-item');
+        existingItems.forEach(item => item.remove());
+        
         try {
             const response = await fetch('/api/projects');
-            const data = await response.json();
             
-            if (data.projects && data.projects.length > 0) {
-                this.addLogEntry('info', `📂 Found ${data.projects.length} existing project(s)`);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
+            
+            const data = await response.json();
+            this.projects = data.projects || [];
+            
+            // Hide loading
+            loadingEl.classList.add('hidden');
+            
+            if (this.projects.length === 0) {
+                emptyEl.classList.remove('hidden');
+                return;
+            }
+            
+            // Create project items with simple approach
+            this.projects.forEach(project => {
+                try {
+                    // Create simple project element
+                    const projectEl = document.createElement('div');
+                    projectEl.className = 'project-item';
+                    projectEl.style.background = 'rgba(255, 255, 255, 0.08)';
+                    projectEl.style.border = '1px solid rgba(255, 255, 255, 0.15)';
+                    projectEl.style.borderRadius = '12px';
+                    projectEl.style.padding = '1rem';
+                    projectEl.style.marginBottom = '0.75rem';
+                    projectEl.style.cursor = 'pointer';
+                    
+                    // Simple project name (remove timestamp)
+                    const simpleName = project.name
+                        .replace(/^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-/, '')
+                        .replace(/-/g, ' ')
+                        .replace(/\b\w/g, l => l.toUpperCase())
+                        .trim() || 'Untitled Project';
+                    
+                    projectEl.innerHTML = `
+                        <div style="font-weight: 600; color: #f7fafc; margin-bottom: 0.5rem;">
+                            ${simpleName}
+                        </div>
+                        <div style="font-size: 0.75rem; color: #94a3b8;">
+                            ${project.fileCount} files
+                        </div>
+                    `;
+                    
+                    // Add click handler
+                    if (project.url && project.fileCount > 0) {
+                        projectEl.addEventListener('click', () => {
+                            // Remove previous selection
+                            const previousSelected = listEl.querySelector('.project-item.selected');
+                            if (previousSelected) {
+                                previousSelected.classList.remove('selected');
+                                previousSelected.style.background = 'rgba(255, 255, 255, 0.08)';
+                            }
+                            
+                            // Add selection
+                            projectEl.classList.add('selected');
+                            projectEl.style.background = 'rgba(102, 126, 234, 0.15)';
+                            
+                            // Load in iframe
+                            const iframe = document.getElementById('preview-iframe');
+                            const placeholder = document.getElementById('preview-placeholder');
+                            if (iframe && placeholder) {
+                                iframe.src = project.url;
+                                placeholder.classList.add('hidden');
+                            }
+                            
+                            // Log entry
+                            this.addLogEntry('info', `🖥️ Loading project: ${simpleName}`);
+                        });
+                        
+                        // Hover effect
+                        projectEl.addEventListener('mouseenter', () => {
+                            if (!projectEl.classList.contains('selected')) {
+                                projectEl.style.background = 'rgba(255, 255, 255, 0.12)';
+                            }
+                        });
+                        
+                        projectEl.addEventListener('mouseleave', () => {
+                            if (!projectEl.classList.contains('selected')) {
+                                projectEl.style.background = 'rgba(255, 255, 255, 0.08)';
+                            }
+                        });
+                    } else {
+                        projectEl.style.opacity = '0.5';
+                        projectEl.style.cursor = 'not-allowed';
+                        projectEl.title = 'No preview available';
+                    }
+                    
+                    listEl.appendChild(projectEl);
+                } catch (error) {
+                    console.error('Error creating project element:', error, project);
+                }
+            });
+            
+            this.addLogEntry('info', `📂 Loaded ${this.projects.length} project(s)`);
+            
         } catch (error) {
-            console.error('Error loading existing projects:', error);
+            console.error('Error loading projects:', error);
+            loadingEl.classList.add('hidden');
+            emptyEl.classList.remove('hidden');
+            this.addLogEntry('error', `❌ Failed to load projects: ${error.message}`);
+            if (this.addVerboseLog) {
+                this.addVerboseLog(`Error loading projects: ${error.message}`, true);
+            }
         }
+    }
+
+    createProjectElement(project) {
+        try {
+            const projectEl = document.createElement('div');
+            projectEl.className = 'project-item';
+            projectEl.dataset.projectName = project.name;
+            
+            // Skip projects with no files
+            if (project.fileCount === 0) {
+                projectEl.classList.add('project-empty');
+            }
+            
+            // Extract project type and formatted name with error handling
+            const displayName = this.formatProjectName(project.name);
+            const projectType = this.detectProjectType(project.name);
+            const createdDate = this.formatProjectDate(project);
+            const fileTypes = this.getProjectFileTypes(project);
+        
+        projectEl.innerHTML = `
+            <div class="project-name">${displayName}</div>
+            <div class="project-meta">
+                <span class="project-type">${projectType}</span>
+                <span class="project-files" title="${fileTypes}">${project.fileCount} files</span>
+                <span class="project-date">${createdDate}</span>
+            </div>
+        `;
+        
+        // Add click handler only for projects with files
+        if (project.url && project.fileCount > 0) {
+            projectEl.addEventListener('click', () => {
+                this.selectProject(project);
+            });
+        } else {
+            projectEl.style.opacity = '0.5';
+            projectEl.style.cursor = 'not-allowed';
+            projectEl.title = 'No preview available - project has no files';
+        }
+        
+            return projectEl;
+        } catch (error) {
+            console.error('Error creating project element:', error, project);
+            // Return a simple fallback element
+            const fallbackEl = document.createElement('div');
+            fallbackEl.className = 'project-item';
+            fallbackEl.innerHTML = `<div class="project-name">Error: ${project.name}</div>`;
+            return fallbackEl;
+        }
+    }
+
+    selectProject(project) {
+        // Remove previous selection
+        const previousSelected = document.querySelector('.project-item.selected');
+        if (previousSelected) {
+            previousSelected.classList.remove('selected');
+        }
+        
+        // Add selection to clicked item
+        const projectEl = document.querySelector(`[data-project-name="${project.name}"]`);
+        if (projectEl) {
+            projectEl.classList.add('selected');
+        }
+        
+        // Update selected project state
+        this.selectedProject = project;
+        
+        // Load project in preview
+        if (project.url) {
+            this.showPreview(project.url);
+            this.addLogEntry('info', `🖥️ Loading project: ${this.formatProjectName(project.name)}`);
+        } else {
+            this.addLogEntry('error', `❌ No preview available for: ${project.name}`);
+        }
+    }
+
+    formatProjectName(name) {
+        // Convert project folder names to readable format
+        return name
+            .replace(/^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-/, '') // Remove timestamp prefix
+            .replace(/-/g, ' ')
+            .replace(/\b\w/g, l => l.toUpperCase())
+            .trim() || 'Untitled Project';
+    }
+
+    detectProjectType(name) {
+        const lowerName = name.toLowerCase();
+        if (lowerName.includes('tic-tac-toe') || lowerName.includes('tictactoe')) return 'Game';
+        if (lowerName.includes('chess')) return 'Game';
+        if (lowerName.includes('todo') || lowerName.includes('task')) return 'App';
+        if (lowerName.includes('button') || lowerName.includes('form')) return 'Component';
+        if (lowerName.includes('dashboard') || lowerName.includes('admin')) return 'Dashboard';
+        return 'Web App';
+    }
+
+    extractDateFromName(name) {
+        // Extract date from timestamp prefix (YYYY-MM-DDTHH-MM-SS)
+        const match = name.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})-(\d{2})/);
+        if (match) {
+            const [, year, month, day, hour, minute] = match;
+            const date = new Date(`${year}-${month}-${day}T${hour}:${minute}`);
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        }
+        return 'Unknown';
+    }
+
+    formatProjectDate(project) {
+        // Use backend-provided creation date if available
+        if (project.createdAt) {
+            const date = new Date(project.createdAt);
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        }
+        // Fallback to extracting from name
+        return this.extractDateFromName(project.name);
+    }
+
+    getProjectFileTypes(project) {
+        // Show file types based on backend metadata
+        if (project.hasFiles) {
+            const types = [];
+            if (project.hasFiles.html) types.push('HTML');
+            if (project.hasFiles.css) types.push('CSS');
+            if (project.hasFiles.js) types.push('JS');
+            if (project.hasFiles.ts) types.push('TS');
+            return types.length > 0 ? types.join(', ') : 'No files';
+        }
+        return 'Unknown';
     }
 
     showPreview(url) {
@@ -326,5 +585,10 @@ class LovableClone {
 
 // Initialize the app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    new LovableClone();
+    try {
+        const app = new LovableClone();
+        window.lovableCloneApp = app; // For debugging in console
+    } catch (error) {
+        console.error('Error initializing LovableClone:', error);
+    }
 });
