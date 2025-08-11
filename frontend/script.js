@@ -9,6 +9,8 @@ class LovableClone {
 
     init() {
         this.bindEvents();
+        // Initialize verbose logs as collapsed
+        this.initializeVerboseLogs();
         // Use setTimeout to ensure DOM is fully ready
         setTimeout(() => {
             this.loadExistingProjects();
@@ -26,6 +28,8 @@ class LovableClone {
         const infoBtn = document.getElementById('info-btn');
         const modalCloseBtn = document.getElementById('modal-close-btn');
         const infoModal = document.getElementById('info-modal');
+        const newProjectBtn = document.getElementById('new-project-btn');
+        const toggleLogsBtn = document.getElementById('toggle-logs-btn');
         const promptInput = document.getElementById('prompt-input');
 
         generateBtn.addEventListener('click', () => this.handleGenerate());
@@ -37,6 +41,8 @@ class LovableClone {
         clearSelectionBtn.addEventListener('click', () => this.clearProjectSelection());
         infoBtn.addEventListener('click', () => this.openInfoModal());
         modalCloseBtn.addEventListener('click', () => this.closeInfoModal());
+        newProjectBtn.addEventListener('click', () => this.clearProjectSelection());
+        toggleLogsBtn.addEventListener('click', () => this.toggleVerboseLogs());
         
         // Close modal when clicking outside
         infoModal.addEventListener('click', (e) => {
@@ -52,13 +58,24 @@ class LovableClone {
             }
         });
         
-        // Allow Enter + Shift to submit
+        // Allow Enter to submit (no Shift required)
         promptInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && e.shiftKey) {
+            if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 this.handleGenerate();
             }
         });
+    }
+
+    initializeVerboseLogs() {
+        const verboseLogContent = document.getElementById('verbose-log-content');
+        const toggleIcon = document.getElementById('toggle-logs-icon');
+        
+        if (verboseLogContent && toggleIcon) {
+            // Start with logs collapsed
+            verboseLogContent.classList.add('collapsed');
+            toggleIcon.textContent = '▶';
+        }
     }
 
     async handleGenerate() {
@@ -138,6 +155,13 @@ class LovableClone {
                             await this.loadProject(data.projectPath);
                             // Refresh project list to show the new project
                             await this.loadProjects();
+                            
+                            // Clear the input prompt after completion
+                            const promptInput = document.getElementById('prompt-input');
+                            if (promptInput) {
+                                promptInput.value = '';
+                                this.addVerboseLog('Cleared input prompt after successful completion');
+                            }
                         }
                     }
                 } else {
@@ -277,13 +301,21 @@ class LovableClone {
                         .trim() || 'Untitled Project';
                     
                     projectEl.innerHTML = `
-                        <div style="font-weight: 600; color: #f7fafc; margin-bottom: 0.5rem;">
+                        <div class="project-name" data-full-name="${simpleName}" title="${simpleName}">
                             ${simpleName}
                         </div>
                         <div style="font-size: 0.75rem; color: #94a3b8;">
                             ${project.fileCount} files
                         </div>
                     `;
+                    
+                    // Check if project name is truncated and add class
+                    setTimeout(() => {
+                        const nameEl = projectEl.querySelector('.project-name');
+                        if (nameEl && nameEl.scrollWidth > nameEl.clientWidth) {
+                            nameEl.classList.add('truncated');
+                        }
+                    }, 10);
                     
                     // Add click handler
                     if (project.url && project.fileCount > 0) {
@@ -347,13 +379,21 @@ class LovableClone {
             const fileTypes = this.getProjectFileTypes(project);
         
         projectEl.innerHTML = `
-            <div class="project-name">${displayName}</div>
+            <div class="project-name" data-full-name="${displayName}" title="${displayName}">${displayName}</div>
             <div class="project-meta">
                 <span class="project-type">${projectType}</span>
                 <span class="project-files" title="${fileTypes}">${project.fileCount} files</span>
                 <span class="project-date">${createdDate}</span>
             </div>
         `;
+        
+        // Check if project name is truncated and add class
+        setTimeout(() => {
+            const nameEl = projectEl.querySelector('.project-name');
+            if (nameEl && nameEl.scrollWidth > nameEl.clientWidth) {
+                nameEl.classList.add('truncated');
+            }
+        }, 10);
         
         // Add click handler only for projects with files
         if (project.url && project.fileCount > 0) {
@@ -407,8 +447,7 @@ class LovableClone {
         // Update selected project state
         this.selectedProject = project;
         
-        // Update UI to show continuation context
-        this.showProjectContext(project);
+        // Note: Project context UI is now hidden (no longer showing "Continuing work on:")
         
         // Load project in preview
         if (project.url) {
@@ -578,18 +617,52 @@ class LovableClone {
         const iframe = document.getElementById('preview-iframe');
         const placeholder = document.getElementById('preview-placeholder');
         
-        iframe.src = url;
-        placeholder.classList.add('hidden');
+        // Add loading state
+        this.addLogEntry('info', `🔄 Loading preview: ${url}`);
         
-        // Handle iframe load
-        iframe.onload = () => {
-            this.addLogEntry('success', '🖥️ Preview loaded successfully');
-        };
+        // Clear any previous iframe content
+        iframe.src = 'about:blank';
         
-        iframe.onerror = () => {
-            this.addLogEntry('error', '❌ Failed to load preview');
-            placeholder.classList.remove('hidden');
-        };
+        // Small delay to ensure clean loading
+        setTimeout(() => {
+            iframe.src = url;
+            placeholder.classList.add('hidden');
+            
+            // Handle iframe load with timeout
+            const loadTimeout = setTimeout(() => {
+                this.addLogEntry('warning', '⚠️ Preview taking longer than expected to load');
+            }, 5000);
+            
+            iframe.onload = () => {
+                clearTimeout(loadTimeout);
+                this.addLogEntry('success', '🖥️ Preview loaded successfully');
+                // Ensure iframe has proper focus and rendering
+                iframe.style.visibility = 'visible';
+                
+                // Try to improve iframe content rendering
+                try {
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    if (iframeDoc) {
+                        // Ensure proper viewport if not already set
+                        if (!iframeDoc.querySelector('meta[name="viewport"]')) {
+                            const viewport = iframeDoc.createElement('meta');
+                            viewport.name = 'viewport';
+                            viewport.content = 'width=device-width, initial-scale=1.0';
+                            iframeDoc.head.appendChild(viewport);
+                        }
+                    }
+                } catch (e) {
+                    // Cross-origin or other access restrictions - that's okay
+                    this.addVerboseLog('Note: Cannot modify iframe content (cross-origin or restrictions)');
+                }
+            };
+            
+            iframe.onerror = () => {
+                clearTimeout(loadTimeout);
+                this.addLogEntry('error', '❌ Failed to load preview');
+                placeholder.classList.remove('hidden');
+            };
+        }, 100);
     }
 
     clearPreview() {
@@ -699,6 +772,23 @@ class LovableClone {
         const verboseLog = document.getElementById('verbose-log');
         verboseLog.value = '';
         this.addVerboseLog('Logs cleared by user');
+    }
+
+    toggleVerboseLogs() {
+        const verboseLogContent = document.getElementById('verbose-log-content');
+        const toggleIcon = document.getElementById('toggle-logs-icon');
+        
+        if (verboseLogContent && toggleIcon) {
+            verboseLogContent.classList.toggle('collapsed');
+            
+            if (verboseLogContent.classList.contains('collapsed')) {
+                toggleIcon.textContent = '▶';
+                this.addVerboseLog('Verbose logs collapsed by user');
+            } else {
+                toggleIcon.textContent = '▼';
+                this.addVerboseLog('Verbose logs expanded by user');
+            }
+        }
     }
 
     async copyVerboseLogs() {

@@ -32,8 +32,8 @@
                         What would you like to build?
                     </label>
                     
-                    <!-- Selected Project Context -->
-                    <div class="selected-project-context hidden" id="selected-project-context">
+                    <!-- Selected Project Context - HIDDEN -->
+                    <div class="selected-project-context hidden" id="selected-project-context" style="display: none;">
                         <div class="context-header">
                             <span class="context-icon">🔄</span>
                             <span class="context-text">
@@ -65,27 +65,8 @@
 
             <!-- Content Area -->
             <div class="content-area">
-                <!-- Left Sidebar - Progress and Projects -->
+                <!-- Left Sidebar - Projects Only -->
                 <section class="sidebar-section">
-                    <!-- Progress Panel -->
-                    <div class="panel progress-panel">
-                        <div class="panel-header">
-                            <h2 class="panel-title">
-                                <span class="panel-icon">📋</span>
-                                Generation Progress
-                            </h2>
-                            <div class="progress-status" id="progress-status">Ready</div>
-                        </div>
-                        <div class="panel-content">
-                            <div class="progress-log" id="progress-log">
-                                <div class="log-entry welcome">
-                                    <span class="log-icon">👋</span>
-                                    <span class="log-text">Welcome! Enter your app idea and click "Generate App" to get started.</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Projects Panel -->
                     <div class="panel projects-panel">
                         <div class="panel-header">
@@ -94,6 +75,9 @@
                                 Generated Projects
                             </h2>
                             <div class="panel-controls">
+                                <button id="new-project-btn" class="control-btn new-project-btn" title="Start New Project">
+                                    <span>➕</span>
+                                </button>
                                 <button id="refresh-projects-btn" class="control-btn" title="Refresh Projects">
                                     <span>🔄</span>
                                 </button>
@@ -148,6 +132,27 @@
                     </div>
                 </section>
 
+                <!-- Generation Progress Panel - Moved Here -->
+                <section class="progress-section">
+                    <div class="panel progress-panel full-width">
+                        <div class="panel-header">
+                            <h2 class="panel-title">
+                                <span class="panel-icon">📋</span>
+                                Generation Progress
+                            </h2>
+                            <div class="progress-status" id="progress-status">Ready</div>
+                        </div>
+                        <div class="panel-content">
+                            <div class="progress-log" id="progress-log">
+                                <div class="log-entry welcome">
+                                    <span class="log-icon">👋</span>
+                                    <span class="log-text">Welcome! Enter your app idea and click "Generate App" to get started.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Bottom Full Width - Verbose Logs -->
                 <section class="verbose-log-section">
                     <div class="verbose-log-header">
@@ -156,6 +161,9 @@
                             Verbose Logs
                         </h2>
                         <div class="verbose-log-controls">
+                            <button id="toggle-logs-btn" class="control-btn" title="Toggle Logs">
+                                <span id="toggle-logs-icon">▼</span>
+                            </button>
                             <button id="clear-logs-btn" class="control-btn" title="Clear Logs">
                                 <span>🗑️</span>
                             </button>
@@ -164,7 +172,7 @@
                             </button>
                         </div>
                     </div>
-                    <div class="verbose-log-content">
+                    <div class="verbose-log-content collapsed" id="verbose-log-content">
                         <textarea 
                             id="verbose-log" 
                             class="verbose-log-textarea" 
