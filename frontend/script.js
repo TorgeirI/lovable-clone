@@ -23,6 +23,9 @@ class LovableClone {
         const copyLogsBtn = document.getElementById('copy-logs-btn');
         const refreshProjectsBtn = document.getElementById('refresh-projects-btn');
         const clearSelectionBtn = document.getElementById('clear-selection-btn');
+        const infoBtn = document.getElementById('info-btn');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+        const infoModal = document.getElementById('info-modal');
         const promptInput = document.getElementById('prompt-input');
 
         generateBtn.addEventListener('click', () => this.handleGenerate());
@@ -32,6 +35,22 @@ class LovableClone {
         copyLogsBtn.addEventListener('click', () => this.copyVerboseLogs());
         refreshProjectsBtn.addEventListener('click', () => this.loadProjects());
         clearSelectionBtn.addEventListener('click', () => this.clearProjectSelection());
+        infoBtn.addEventListener('click', () => this.openInfoModal());
+        modalCloseBtn.addEventListener('click', () => this.closeInfoModal());
+        
+        // Close modal when clicking outside
+        infoModal.addEventListener('click', (e) => {
+            if (e.target === infoModal) {
+                this.closeInfoModal();
+            }
+        });
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !infoModal.classList.contains('hidden')) {
+                this.closeInfoModal();
+            }
+        });
         
         // Allow Enter + Shift to submit
         promptInput.addEventListener('keydown', (e) => {
@@ -269,27 +288,8 @@ class LovableClone {
                     // Add click handler
                     if (project.url && project.fileCount > 0) {
                         projectEl.addEventListener('click', () => {
-                            // Remove previous selection
-                            const previousSelected = listEl.querySelector('.project-item.selected');
-                            if (previousSelected) {
-                                previousSelected.classList.remove('selected');
-                                previousSelected.style.background = 'rgba(255, 255, 255, 0.08)';
-                            }
-                            
-                            // Add selection
-                            projectEl.classList.add('selected');
-                            projectEl.style.background = 'rgba(102, 126, 234, 0.15)';
-                            
-                            // Load in iframe
-                            const iframe = document.getElementById('preview-iframe');
-                            const placeholder = document.getElementById('preview-placeholder');
-                            if (iframe && placeholder) {
-                                iframe.src = project.url;
-                                placeholder.classList.add('hidden');
-                            }
-                            
-                            // Log entry
-                            this.addLogEntry('info', `🖥️ Loading project: ${simpleName}`);
+                            // Use the proper selectProject method to handle all UI updates
+                            this.selectProject(project);
                         });
                         
                         // Hover effect
@@ -382,12 +382,26 @@ class LovableClone {
         const previousSelected = document.querySelector('.project-item.selected');
         if (previousSelected) {
             previousSelected.classList.remove('selected');
+            // Reset inline styles for previously selected item
+            previousSelected.style.background = 'rgba(255, 255, 255, 0.08)';
         }
         
+        // Find and select the clicked project element
+        const projectElements = document.querySelectorAll('.project-item');
+        let projectEl = null;
+        
+        // Find the project element by matching the project name
+        projectElements.forEach(el => {
+            if (el.dataset.projectName === project.name || 
+                (el.textContent && el.textContent.includes(this.formatProjectName(project.name)))) {
+                projectEl = el;
+            }
+        });
+        
         // Add selection to clicked item
-        const projectEl = document.querySelector(`[data-project-name="${project.name}"]`);
         if (projectEl) {
             projectEl.classList.add('selected');
+            projectEl.style.background = 'rgba(102, 126, 234, 0.15)';
         }
         
         // Update selected project state
@@ -489,6 +503,22 @@ class LovableClone {
         this.clearPreview();
         
         this.addLogEntry('info', '🆕 Ready to create a new project');
+    }
+
+    openInfoModal() {
+        const modal = document.getElementById('info-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        }
+    }
+
+    closeInfoModal() {
+        const modal = document.getElementById('info-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.style.overflow = ''; // Restore background scrolling
+        }
     }
 
     formatProjectName(name) {

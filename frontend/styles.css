@@ -38,6 +38,7 @@ body {
     margin: 0 auto;
     padding: 0 2rem;
     text-align: center;
+    position: relative;
 }
 
 .logo {
@@ -64,6 +65,43 @@ body {
     color: #a0aec0;
     font-size: 1rem;
     font-weight: 400;
+}
+
+/* Info Button */
+.info-btn {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #e2e8f0;
+    padding: 0.75rem;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+}
+
+.info-btn:hover {
+    background: rgba(102, 126, 234, 0.2);
+    border-color: rgba(102, 126, 234, 0.4);
+    transform: translateY(-50%) translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+.info-btn:active {
+    transform: translateY(-50%) translateY(0px);
+}
+
+.info-icon {
+    font-size: 1.4rem;
 }
 
 /* Main Content */
@@ -760,6 +798,201 @@ body {
     100% { transform: rotate(360deg); }
 }
 
+/* Info Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 15, 35, 0.9);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    opacity: 1;
+    transition: all 0.3s ease;
+    padding: 2rem;
+    overflow-y: auto;
+}
+
+.modal-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.95);
+}
+
+.modal-content {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    border-radius: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    width: 100%;
+    max-width: 800px;
+    max-height: 90vh;
+    overflow: hidden;
+    animation: modalSlideIn 0.3s ease-out;
+    position: relative;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-header {
+    padding: 2rem 2rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.modal-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #f7fafc;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.modal-icon {
+    font-size: 1.8rem;
+}
+
+.modal-close-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #e2e8f0;
+    padding: 0.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-close-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #fecaca;
+}
+
+.modal-body {
+    padding: 2rem;
+    overflow-y: auto;
+    max-height: calc(90vh - 120px);
+}
+
+.modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+}
+
+.info-section {
+    margin-bottom: 2rem;
+}
+
+.info-section:last-child {
+    margin-bottom: 0;
+}
+
+.section-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #f7fafc;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.section-text {
+    color: #cbd5e1;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+}
+
+.feature-list, .steps-list, .tips-list {
+    color: #cbd5e1;
+    line-height: 1.7;
+    padding-left: 1.5rem;
+}
+
+.feature-list li, .steps-list li, .tips-list li {
+    margin-bottom: 0.75rem;
+}
+
+.feature-list li strong, .steps-list li strong {
+    color: #667eea;
+}
+
+.examples-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+}
+
+.example-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1rem;
+    color: #cbd5e1;
+    line-height: 1.5;
+}
+
+.example-item strong {
+    color: #f7fafc;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.tech-specs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.spec-item {
+    background: rgba(102, 126, 234, 0.1);
+    border: 1px solid rgba(102, 126, 234, 0.2);
+    border-radius: 12px;
+    padding: 1rem;
+    color: #cbd5e1;
+    line-height: 1.5;
+}
+
+.spec-item strong {
+    color: #a5b4fc;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
 /* Responsive Design */
 @media (max-width: 1200px) {
     .content-area {
@@ -806,6 +1039,48 @@ body {
     }
 }
 
+@media (max-width: 768px) {
+    .modal-overlay {
+        padding: 1rem;
+    }
+    
+    .modal-content {
+        max-height: 95vh;
+        border-radius: 16px;
+    }
+    
+    .modal-header {
+        padding: 1.5rem 1.5rem 1rem;
+    }
+    
+    .modal-title {
+        font-size: 1.3rem;
+    }
+    
+    .modal-body {
+        padding: 1.5rem;
+        max-height: calc(95vh - 100px);
+    }
+    
+    .examples-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .tech-specs {
+        grid-template-columns: 1fr;
+    }
+    
+    .info-btn {
+        width: 44px;
+        height: 44px;
+        padding: 0.5rem;
+    }
+    
+    .info-icon {
+        font-size: 1.2rem;
+    }
+}
+
 @media (max-width: 480px) {
     .main-content {
         padding: 1rem 0;
@@ -841,5 +1116,35 @@ body {
     .generate-btn {
         padding: 0.75rem 1.5rem;
         font-size: 1rem;
+    }
+    
+    .modal-overlay {
+        padding: 0.5rem;
+    }
+    
+    .modal-header {
+        padding: 1rem 1rem 0.75rem;
+    }
+    
+    .modal-title {
+        font-size: 1.2rem;
+    }
+    
+    .modal-body {
+        padding: 1rem;
+    }
+    
+    .section-title {
+        font-size: 1.1rem;
+    }
+    
+    .info-btn {
+        width: 40px;
+        height: 40px;
+        padding: 0.4rem;
+    }
+    
+    .info-icon {
+        font-size: 1.1rem;
     }
 }
