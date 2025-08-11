@@ -165,6 +165,57 @@ body {
     font-size: 1.2rem;
 }
 
+/* Selected Project Context */
+.selected-project-context {
+    background: rgba(102, 126, 234, 0.1);
+    border: 1px solid rgba(102, 126, 234, 0.3);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    animation: slideIn 0.3s ease-out;
+}
+
+.context-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.context-icon {
+    font-size: 1.1rem;
+    color: #667eea;
+}
+
+.context-text {
+    flex: 1;
+    color: #e2e8f0;
+    font-size: 0.95rem;
+}
+
+.context-clear-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #e2e8f0;
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s ease;
+}
+
+.context-clear-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #fecaca;
+}
+
+.context-details {
+    font-size: 0.85rem;
+    color: #a0aec0;
+    padding-left: 1.6rem;
+}
+
 /* Content Area - New Layout */
 .content-area {
     display: grid;

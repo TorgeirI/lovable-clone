@@ -1,0 +1,33 @@
+{
+  "projectId": "string - unique identifier for the project",
+  "projectName": "string - human readable project name",
+  "createdAt": "ISO timestamp - when project was first created",
+  "lastModified": "ISO timestamp - when project was last updated", 
+  "prompts": [
+    {
+      "id": "string - unique prompt ID",
+      "timestamp": "ISO timestamp",
+      "prompt": "string - the user's prompt",
+      "type": "initial | continuation",
+      "result": {
+        "success": "boolean",
+        "filesCreated": ["array of file paths created/modified"],
+        "error": "string - error message if failed"
+      }
+    }
+  ],
+  "currentContext": "string - summary of current project state for Claude",
+  "fileStructure": {
+    "description": "Current files and their purposes",
+    "files": [
+      {
+        "path": "string - relative file path",
+        "purpose": "string - what this file does",
+        "lastModified": "ISO timestamp"
+      }
+    ]
+  },
+  "technologies": ["array of technologies used - html, css, js, ts, etc"],
+  "projectType": "string - game, app, component, dashboard, etc",
+  "version": "number - schema version for future compatibility"
+}

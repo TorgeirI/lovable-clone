@@ -16,7 +16,7 @@
                     <span class="logo-icon">🚀</span>
                     Lovable Clone
                 </h1>
-                <p class="tagline">Build web apps with AI - powered by Claude Code</p>
+                <p class="tagline">Builtera - AI Web App Builder</p>
             </div>
         </header>
 
@@ -25,9 +25,26 @@
             <!-- Input Section -->
             <section class="input-section">
                 <div class="input-container">
-                    <label for="prompt-input" class="input-label">
+                    <label for="prompt-input" class="input-label" id="input-label">
                         What would you like to build?
                     </label>
+                    
+                    <!-- Selected Project Context -->
+                    <div class="selected-project-context hidden" id="selected-project-context">
+                        <div class="context-header">
+                            <span class="context-icon">🔄</span>
+                            <span class="context-text">
+                                Continuing work on: <strong id="context-project-name">Project Name</strong>
+                            </span>
+                            <button id="clear-selection-btn" class="context-clear-btn" title="Start new project">
+                                <span>✕</span>
+                            </button>
+                        </div>
+                        <div class="context-details">
+                            <span id="context-project-details">Details about the selected project</span>
+                        </div>
+                    </div>
+                    
                     <div class="input-group">
                         <textarea 
                             id="prompt-input" 

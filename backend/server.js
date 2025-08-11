@@ -6,6 +6,129 @@ const fs = require('fs');
 // Import the compiled generator function directly
 const { generateWithClaude } = require('../dist/generator.js');
 
+// Project Memory Management Functions
+function createProjectMemory(projectName, prompt, projectPath) {
+    const memory = {
+        projectId: Date.now().toString(),
+        projectName: projectName,
+        createdAt: new Date().toISOString(),
+        lastModified: new Date().toISOString(),
+        prompts: [{
+            id: Date.now().toString(),
+            timestamp: new Date().toISOString(),
+            prompt: prompt,
+            type: 'initial',
+            result: {
+                success: true,
+                filesCreated: [],
+                error: null
+            }
+        }],
+        currentContext: `Project: ${projectName}\nInitial prompt: ${prompt}`,
+        fileStructure: {
+            description: 'Project files and their purposes',
+            files: []
+        },
+        technologies: [],
+        projectType: 'web app',
+        version: 1
+    };
+    
+    const memoryPath = path.join(projectPath, 'projectmemory.json');
+    fs.writeFileSync(memoryPath, JSON.stringify(memory, null, 2));
+    return memory;
+}
+
+function loadProjectMemory(projectPath) {
+    const memoryPath = path.join(projectPath, 'projectmemory.json');
+    if (fs.existsSync(memoryPath)) {
+        try {
+            const content = fs.readFileSync(memoryPath, 'utf8');
+            return JSON.parse(content);
+        } catch (error) {
+            console.error('Error loading project memory:', error);
+            return null;
+        }
+    }
+    return null;
+}
+
+function updateProjectMemory(projectPath, prompt, result) {
+    const memory = loadProjectMemory(projectPath);
+    if (!memory) return null;
+    
+    // Add new prompt to history
+    const newPrompt = {
+        id: Date.now().toString(),
+        timestamp: new Date().toISOString(),
+        prompt: prompt,
+        type: 'continuation',
+        result: {
+            success: result.success,
+            filesCreated: result.filesCreated || [],
+            error: result.error || null
+        }
+    };
+    
+    memory.prompts.push(newPrompt);
+    memory.lastModified = new Date().toISOString();
+    
+    // Update context with latest prompt
+    const recentPrompts = memory.prompts.slice(-3).map(p => `- ${p.prompt}`).join('\n');
+    memory.currentContext = `Project: ${memory.projectName}\n\nRecent development:\n${recentPrompts}`;
+    
+    // Update file structure if result includes files
+    if (result.filesCreated && result.filesCreated.length > 0) {
+        const currentFiles = fs.readdirSync(projectPath).filter(file => 
+            file !== 'projectmemory.json' && !file.startsWith('.')
+        );
+        
+        memory.fileStructure.files = currentFiles.map(file => ({
+            path: file,
+            purpose: 'Auto-detected file',
+            lastModified: new Date().toISOString()
+        }));
+        
+        // Detect technologies
+        const technologies = new Set(memory.technologies);
+        if (currentFiles.some(f => f.endsWith('.html'))) technologies.add('html');
+        if (currentFiles.some(f => f.endsWith('.css'))) technologies.add('css');
+        if (currentFiles.some(f => f.endsWith('.js'))) technologies.add('javascript');
+        if (currentFiles.some(f => f.endsWith('.ts'))) technologies.add('typescript');
+        memory.technologies = Array.from(technologies);
+    }
+    
+    // Save updated memory
+    const memoryPath = path.join(projectPath, 'projectmemory.json');
+    fs.writeFileSync(memoryPath, JSON.stringify(memory, null, 2));
+    return memory;
+}
+
+function buildContextFromMemory(memory) {
+    if (!memory) return '';
+    
+    const contextParts = [
+        `You are continuing work on an existing project: "${memory.projectName}"`,
+        `Project was created: ${new Date(memory.createdAt).toLocaleDateString()}`,
+        `Technologies used: ${memory.technologies.join(', ') || 'HTML/CSS/JS'}`,
+        '',
+        'Previous prompts and development history:',
+        ...memory.prompts.map((p, i) => 
+            `${i + 1}. ${p.type === 'initial' ? '[INITIAL]' : '[CONTINUE]'} ${p.prompt} (${new Date(p.timestamp).toLocaleDateString()})`
+        ),
+        '',
+        'Current project context:',
+        memory.currentContext,
+        '',
+        'Current files in project:',
+        ...memory.fileStructure.files.map(f => `- ${f.path}: ${f.purpose}`),
+        '',
+        'IMPORTANT: You should build upon the existing project, modifying and extending the current files rather than creating an entirely new project. Maintain consistency with the existing codebase and design patterns.'
+    ];
+    
+    return contextParts.join('\n');
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -20,7 +143,7 @@ const activeGenerations = new Map();
 
 // API Routes
 app.post('/api/generate', async (req, res) => {
-    const { prompt } = req.body;
+    const { prompt, continueFromProject } = req.body;
     
     if (!prompt) {
         return res.status(400).json({ error: 'Prompt is required' });
@@ -34,16 +157,17 @@ app.post('/api/generate', async (req, res) => {
         prompt,
         progress: [],
         startTime: new Date(),
-        projectPath: null
+        projectPath: null,
+        continueFromProject: continueFromProject || null
     });
 
     // Start generation in background
-    generateProject(generationId, prompt);
+    generateProject(generationId, prompt, continueFromProject);
 
     res.json({ 
         generationId,
         status: 'started',
-        message: 'Generation started successfully'
+        message: continueFromProject ? 'Continuing project development...' : 'Generation started successfully'
     });
 });
 
@@ -116,33 +240,68 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
-async function generateProject(generationId, prompt) {
+async function generateProject(generationId, prompt, continueFromProject = null) {
     const generation = activeGenerations.get(generationId);
     
     try {
         generation.status = 'generating';
-        generation.progress.push({
-            timestamp: new Date(),
-            type: 'info',
-            message: `🚀 Starting generation for: "${prompt}"`
-        });
+        
+        let contextualPrompt = prompt;
+        let targetProjectPath = null;
+        let existingMemory = null;
+        
+        if (continueFromProject) {
+            // Load existing project and build context
+            const outputDir = path.join(__dirname, '../output');
+            targetProjectPath = path.join(outputDir, continueFromProject);
+            
+            if (fs.existsSync(targetProjectPath)) {
+                existingMemory = loadProjectMemory(targetProjectPath);
+                if (existingMemory) {
+                    const memoryContext = buildContextFromMemory(existingMemory);
+                    contextualPrompt = `${memoryContext}\n\nNEW REQUEST: ${prompt}`;
+                    
+                    generation.progress.push({
+                        timestamp: new Date(),
+                        type: 'info',
+                        message: `🔄 Continuing development on: "${existingMemory.projectName}"`
+                    });
+                    
+                    generation.verboseLogs = generation.verboseLogs || [];
+                    generation.verboseLogs.push({
+                        timestamp: new Date().toISOString(),
+                        level: 'INFO',
+                        message: `Backend: Continuing project "${continueFromProject}" with context from ${existingMemory.prompts.length} previous prompts`
+                    });
+                } else {
+                    throw new Error(`Project memory not found for ${continueFromProject}`);
+                }
+            } else {
+                throw new Error(`Project directory not found: ${continueFromProject}`);
+            }
+        } else {
+            generation.progress.push({
+                timestamp: new Date(),
+                type: 'info',
+                message: `🚀 Starting generation for: "${prompt}"`
+            });
+            
+            generation.verboseLogs = generation.verboseLogs || [];
+            generation.verboseLogs.push({
+                timestamp: new Date().toISOString(),
+                level: 'INFO',
+                message: `Backend: Starting new project generation for prompt: "${prompt}"`
+            });
+        }
 
-        // Add detailed logging for backend process
-        generation.verboseLogs = generation.verboseLogs || [];
         generation.verboseLogs.push({
             timestamp: new Date().toISOString(),
             level: 'INFO',
-            message: `Backend: Starting generation process for prompt: "${prompt}"`
+            message: `Backend: Calling generateWithClaude function with ${continueFromProject ? 'contextual' : 'initial'} prompt`
         });
 
-        generation.verboseLogs.push({
-            timestamp: new Date().toISOString(),
-            level: 'INFO',
-            message: `Backend: Calling generateWithClaude function`
-        });
-
-        // Use existing generator function
-        const result = await generateWithClaude(prompt);
+        // Use existing generator function with contextual prompt
+        const result = await generateWithClaude(contextualPrompt, targetProjectPath);
 
         // Log all messages from the generation result
         if (result.messages && result.messages.length > 0) {
@@ -164,16 +323,43 @@ async function generateProject(generationId, prompt) {
         if (result.success) {
             generation.status = 'completed';
             generation.projectPath = result.outputDirectory;
-            generation.progress.push({
-                timestamp: new Date(),
-                type: 'success',
-                message: '✅ Generation completed successfully!'
-            });
+            
+            // Handle project memory
+            if (continueFromProject && existingMemory) {
+                // Update existing project memory
+                updateProjectMemory(targetProjectPath, prompt, result);
+                generation.progress.push({
+                    timestamp: new Date(),
+                    type: 'success',
+                    message: '✅ Project updated successfully!'
+                });
+                generation.verboseLogs.push({
+                    timestamp: new Date().toISOString(),
+                    level: 'INFO',
+                    message: `Backend: Updated project memory for "${continueFromProject}"`
+                });
+            } else {
+                // Create new project memory for new projects
+                const projectName = path.basename(result.outputDirectory);
+                createProjectMemory(projectName, prompt, result.outputDirectory);
+                generation.progress.push({
+                    timestamp: new Date(),
+                    type: 'success',
+                    message: '✅ Generation completed successfully!'
+                });
+                generation.verboseLogs.push({
+                    timestamp: new Date().toISOString(),
+                    level: 'INFO',
+                    message: `Backend: Created project memory for new project "${projectName}"`
+                });
+            }
+            
             generation.progress.push({
                 timestamp: new Date(),
                 type: 'info',
-                message: `📁 Project created at: ${result.outputDirectory}`
+                message: `📁 Project ${continueFromProject ? 'updated' : 'created'} at: ${result.outputDirectory}`
             });
+            
             generation.verboseLogs.push({
                 timestamp: new Date().toISOString(),
                 level: 'INFO',
@@ -181,6 +367,16 @@ async function generateProject(generationId, prompt) {
             });
         } else {
             generation.status = 'error';
+            
+            // Update project memory with failure if continuing project
+            if (continueFromProject && existingMemory) {
+                updateProjectMemory(targetProjectPath, prompt, { 
+                    success: false, 
+                    error: result.error,
+                    filesCreated: []
+                });
+            }
+            
             generation.progress.push({
                 timestamp: new Date(),
                 type: 'error',

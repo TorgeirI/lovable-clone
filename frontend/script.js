@@ -22,6 +22,7 @@ class LovableClone {
         const clearLogsBtn = document.getElementById('clear-logs-btn');
         const copyLogsBtn = document.getElementById('copy-logs-btn');
         const refreshProjectsBtn = document.getElementById('refresh-projects-btn');
+        const clearSelectionBtn = document.getElementById('clear-selection-btn');
         const promptInput = document.getElementById('prompt-input');
 
         generateBtn.addEventListener('click', () => this.handleGenerate());
@@ -30,6 +31,7 @@ class LovableClone {
         clearLogsBtn.addEventListener('click', () => this.clearVerboseLogs());
         copyLogsBtn.addEventListener('click', () => this.copyVerboseLogs());
         refreshProjectsBtn.addEventListener('click', () => this.loadProjects());
+        clearSelectionBtn.addEventListener('click', () => this.clearProjectSelection());
         
         // Allow Enter + Shift to submit
         promptInput.addEventListener('keydown', (e) => {
@@ -55,13 +57,21 @@ class LovableClone {
         this.addVerboseLog(`Starting generation request for prompt: "${prompt}"`);
 
         try {
+            const requestBody = { prompt };
+            
+            // Add project continuation info if a project is selected
+            if (this.selectedProject) {
+                requestBody.continueFromProject = this.selectedProject.name;
+                this.addVerboseLog(`Continuing work on project: ${this.selectedProject.name}`);
+            }
+            
             this.addVerboseLog('Sending POST request to /api/generate');
             const response = await fetch('/api/generate', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ prompt })
+                body: JSON.stringify(requestBody)
             });
 
             const data = await response.json();
@@ -383,6 +393,9 @@ class LovableClone {
         // Update selected project state
         this.selectedProject = project;
         
+        // Update UI to show continuation context
+        this.showProjectContext(project);
+        
         // Load project in preview
         if (project.url) {
             this.showPreview(project.url);
@@ -390,6 +403,92 @@ class LovableClone {
         } else {
             this.addLogEntry('error', `❌ No preview available for: ${project.name}`);
         }
+    }
+
+    showProjectContext(project) {
+        const contextEl = document.getElementById('selected-project-context');
+        const projectNameEl = document.getElementById('context-project-name');
+        const projectDetailsEl = document.getElementById('context-project-details');
+        const inputLabelEl = document.getElementById('input-label');
+        const promptInputEl = document.getElementById('prompt-input');
+        const generateBtnEl = document.getElementById('generate-btn');
+        
+        if (contextEl && projectNameEl && projectDetailsEl) {
+            // Show context
+            contextEl.classList.remove('hidden');
+            
+            // Update project info
+            const displayName = this.formatProjectName(project.name);
+            projectNameEl.textContent = displayName;
+            
+            const createdDate = this.formatProjectDate(project);
+            const fileTypes = this.getProjectFileTypes(project);
+            projectDetailsEl.textContent = `${project.fileCount} files (${fileTypes}) • Created ${createdDate}`;
+            
+            // Update input label and placeholder
+            if (inputLabelEl) {
+                inputLabelEl.textContent = 'What would you like to add or modify?';
+            }
+            
+            if (promptInputEl) {
+                promptInputEl.placeholder = `Describe changes or additions to ${displayName}... (e.g., 'Add a dark mode toggle' or 'Change the color scheme to blue')`;
+            }
+            
+            // Update button text
+            if (generateBtnEl) {
+                const btnTextEl = generateBtnEl.querySelector('.btn-text');
+                const btnIconEl = generateBtnEl.querySelector('.btn-icon');
+                if (btnTextEl && btnIconEl) {
+                    btnIconEl.textContent = '🔄';
+                    btnTextEl.textContent = 'Continue Building';
+                }
+            }
+        }
+    }
+
+    clearProjectSelection() {
+        // Clear selected project
+        this.selectedProject = null;
+        
+        // Remove visual selection
+        const selectedEl = document.querySelector('.project-item.selected');
+        if (selectedEl) {
+            selectedEl.classList.remove('selected');
+            selectedEl.style.background = 'rgba(255, 255, 255, 0.08)';
+        }
+        
+        // Hide context
+        const contextEl = document.getElementById('selected-project-context');
+        if (contextEl) {
+            contextEl.classList.add('hidden');
+        }
+        
+        // Reset UI elements
+        const inputLabelEl = document.getElementById('input-label');
+        const promptInputEl = document.getElementById('prompt-input');
+        const generateBtnEl = document.getElementById('generate-btn');
+        
+        if (inputLabelEl) {
+            inputLabelEl.textContent = 'What would you like to build?';
+        }
+        
+        if (promptInputEl) {
+            promptInputEl.placeholder = 'Describe your web app idea... (e.g., \'Create a todo app with drag and drop functionality\')';
+        }
+        
+        if (generateBtnEl) {
+            const btnTextEl = generateBtnEl.querySelector('.btn-text');
+            const btnIconEl = generateBtnEl.querySelector('.btn-icon');
+            if (btnTextEl && btnIconEl) {
+                btnIconEl.textContent = '✨';
+                btnTextEl.textContent = 'Generate App';
+            }
+        }
+        
+        // Clear preview
+        this.clearPreview();
+        
+        this.addLogEntry('info', '🆕 Ready to create a new project');
     }
 
     formatProjectName(name) {
