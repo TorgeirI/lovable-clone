@@ -447,8 +447,7 @@ class LovableClone {
         // Update selected project state
         this.selectedProject = project;
         
-        // Update UI to show continuation context
-        this.showProjectContext(project);
+        // Note: Context UI hidden per user request - projects still continue in background
         
         // Load project in preview
         if (project.url) {
