@@ -13,7 +13,14 @@
       "Bash(pkill:*)",
       "Bash(git add:*)",
       "Bash(git push:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(rmdir:*)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "Bash(npm run build:*)",
+      "Bash(timeout 10s npm start)",
+      "Bash(timeout 5s npm start)",
+      "Bash(timeout 8s npm start)",
+      "Bash(PORT=3001 timeout 3s npm start)"
     ],
     "deny": []
   }

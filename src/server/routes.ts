@@ -1,148 +1,31 @@
-const express = require('express');
-const cors = require('cors');
-const path = require('path');
-const fs = require('fs');
+import express, { Request, Response, Router } from 'express';
+import path from 'path';
+import fs from 'fs';
+import { 
+    createProjectMemory, 
+    loadProjectMemory, 
+    updateProjectMemory, 
+    buildContextFromMemory 
+} from '../lib/projectMemory';
 
-// Import the compiled generator function directly
-const { generateWithClaude } = require('../dist/generator.js');
-
-// Project Memory Management Functions
-function createProjectMemory(projectName, prompt, projectPath) {
-    const memory = {
-        projectId: Date.now().toString(),
-        projectName: projectName,
-        createdAt: new Date().toISOString(),
-        lastModified: new Date().toISOString(),
-        prompts: [{
-            id: Date.now().toString(),
-            timestamp: new Date().toISOString(),
-            prompt: prompt,
-            type: 'initial',
-            result: {
-                success: true,
-                filesCreated: [],
-                error: null
-            }
-        }],
-        currentContext: `Project: ${projectName}\nInitial prompt: ${prompt}`,
-        fileStructure: {
-            description: 'Project files and their purposes',
-            files: []
-        },
-        technologies: [],
-        projectType: 'web app',
-        version: 1
-    };
-    
-    const memoryPath = path.join(projectPath, 'projectmemory.json');
-    fs.writeFileSync(memoryPath, JSON.stringify(memory, null, 2));
-    return memory;
-}
-
-function loadProjectMemory(projectPath) {
-    const memoryPath = path.join(projectPath, 'projectmemory.json');
-    if (fs.existsSync(memoryPath)) {
-        try {
-            const content = fs.readFileSync(memoryPath, 'utf8');
-            return JSON.parse(content);
-        } catch (error) {
-            console.error('Error loading project memory:', error);
-            return null;
-        }
+// Dynamic import for generateWithClaude after build
+let generateWithClaude: any;
+(async () => {
+    try {
+        const generator = require('../lib/generator.js');
+        generateWithClaude = generator.generateWithClaude;
+    } catch (error) {
+        console.error('Failed to load generator:', error);
     }
-    return null;
-}
+})();
 
-function updateProjectMemory(projectPath, prompt, result) {
-    const memory = loadProjectMemory(projectPath);
-    if (!memory) return null;
-    
-    // Add new prompt to history
-    const newPrompt = {
-        id: Date.now().toString(),
-        timestamp: new Date().toISOString(),
-        prompt: prompt,
-        type: 'continuation',
-        result: {
-            success: result.success,
-            filesCreated: result.filesCreated || [],
-            error: result.error || null
-        }
-    };
-    
-    memory.prompts.push(newPrompt);
-    memory.lastModified = new Date().toISOString();
-    
-    // Update context with latest prompt
-    const recentPrompts = memory.prompts.slice(-3).map(p => `- ${p.prompt}`).join('\n');
-    memory.currentContext = `Project: ${memory.projectName}\n\nRecent development:\n${recentPrompts}`;
-    
-    // Update file structure if result includes files
-    if (result.filesCreated && result.filesCreated.length > 0) {
-        const currentFiles = fs.readdirSync(projectPath).filter(file => 
-            file !== 'projectmemory.json' && !file.startsWith('.')
-        );
-        
-        memory.fileStructure.files = currentFiles.map(file => ({
-            path: file,
-            purpose: 'Auto-detected file',
-            lastModified: new Date().toISOString()
-        }));
-        
-        // Detect technologies
-        const technologies = new Set(memory.technologies);
-        if (currentFiles.some(f => f.endsWith('.html'))) technologies.add('html');
-        if (currentFiles.some(f => f.endsWith('.css'))) technologies.add('css');
-        if (currentFiles.some(f => f.endsWith('.js'))) technologies.add('javascript');
-        if (currentFiles.some(f => f.endsWith('.ts'))) technologies.add('typescript');
-        memory.technologies = Array.from(technologies);
-    }
-    
-    // Save updated memory
-    const memoryPath = path.join(projectPath, 'projectmemory.json');
-    fs.writeFileSync(memoryPath, JSON.stringify(memory, null, 2));
-    return memory;
-}
-
-function buildContextFromMemory(memory) {
-    if (!memory) return '';
-    
-    const contextParts = [
-        `You are continuing work on an existing project: "${memory.projectName}"`,
-        `Project was created: ${new Date(memory.createdAt).toLocaleDateString()}`,
-        `Technologies used: ${memory.technologies.join(', ') || 'HTML/CSS/JS'}`,
-        '',
-        'Previous prompts and development history:',
-        ...memory.prompts.map((p, i) => 
-            `${i + 1}. ${p.type === 'initial' ? '[INITIAL]' : '[CONTINUE]'} ${p.prompt} (${new Date(p.timestamp).toLocaleDateString()})`
-        ),
-        '',
-        'Current project context:',
-        memory.currentContext,
-        '',
-        'Current files in project:',
-        ...memory.fileStructure.files.map(f => `- ${f.path}: ${f.purpose}`),
-        '',
-        'IMPORTANT: You should build upon the existing project, modifying and extending the current files rather than creating an entirely new project. Maintain consistency with the existing codebase and design patterns.'
-    ];
-    
-    return contextParts.join('\n');
-}
-
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.static(path.join(__dirname, '../frontend')));
-app.use('/output', express.static(path.join(__dirname, '../output')));
+const router: Router = express.Router();
 
 // Store active generations
 const activeGenerations = new Map();
 
 // API Routes
-app.post('/api/generate', async (req, res) => {
+router.post('/api/generate', async (req: Request, res: Response) => {
     const { prompt, continueFromProject } = req.body;
     
     if (!prompt) {
@@ -171,7 +54,7 @@ app.post('/api/generate', async (req, res) => {
     });
 });
 
-app.get('/api/status/:generationId', (req, res) => {
+router.get('/api/status/:generationId', (req: Request, res: Response) => {
     const { generationId } = req.params;
     const generation = activeGenerations.get(generationId);
     
@@ -189,8 +72,8 @@ app.get('/api/status/:generationId', (req, res) => {
     });
 });
 
-app.get('/api/projects', (req, res) => {
-    const outputDir = path.join(__dirname, '../output');
+router.get('/api/projects', (req: Request, res: Response) => {
+    const outputDir = path.join(__dirname, '../../output');
     
     if (!fs.existsSync(outputDir)) {
         return res.json({ projects: [] });
@@ -230,17 +113,12 @@ app.get('/api/projects', (req, res) => {
                 }
             };
         })
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Sort by creation date, newest first
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); // Sort by creation date, newest first
 
     res.json({ projects });
 });
 
-// Serve frontend
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/index.html'));
-});
-
-async function generateProject(generationId, prompt, continueFromProject = null) {
+async function generateProject(generationId: string, prompt: string, continueFromProject: string | null = null) {
     const generation = activeGenerations.get(generationId);
     
     try {
@@ -252,7 +130,7 @@ async function generateProject(generationId, prompt, continueFromProject = null)
         
         if (continueFromProject) {
             // Load existing project and build context
-            const outputDir = path.join(__dirname, '../output');
+            const outputDir = path.join(__dirname, '../../output');
             targetProjectPath = path.join(outputDir, continueFromProject);
             
             if (fs.existsSync(targetProjectPath)) {
@@ -311,7 +189,7 @@ async function generateProject(generationId, prompt, continueFromProject = null)
                 message: `Backend: Received ${result.messages.length} messages from Claude Code SDK`
             });
             
-            result.messages.forEach((msg, index) => {
+            result.messages.forEach((msg: any, index: number) => {
                 generation.verboseLogs.push({
                     timestamp: new Date().toISOString(),
                     level: 'DEBUG',
@@ -327,7 +205,9 @@ async function generateProject(generationId, prompt, continueFromProject = null)
             // Handle project memory
             if (continueFromProject && existingMemory) {
                 // Update existing project memory
-                updateProjectMemory(targetProjectPath, prompt, result);
+                if (targetProjectPath) {
+                    updateProjectMemory(targetProjectPath, prompt, result);
+                }
                 generation.progress.push({
                     timestamp: new Date(),
                     type: 'success',
@@ -369,7 +249,7 @@ async function generateProject(generationId, prompt, continueFromProject = null)
             generation.status = 'error';
             
             // Update project memory with failure if continuing project
-            if (continueFromProject && existingMemory) {
+            if (continueFromProject && existingMemory && targetProjectPath) {
                 updateProjectMemory(targetProjectPath, prompt, { 
                     success: false, 
                     error: result.error,
@@ -390,29 +270,24 @@ async function generateProject(generationId, prompt, continueFromProject = null)
         }
     } catch (error) {
         generation.status = 'error';
+        const errorMessage = error instanceof Error ? error.message : String(error);
         generation.progress.push({
             timestamp: new Date(),
             type: 'error',
-            message: `❌ Unexpected error: ${error.message}`
+            message: `❌ Unexpected error: ${errorMessage}`
         });
         generation.verboseLogs = generation.verboseLogs || [];
         generation.verboseLogs.push({
             timestamp: new Date().toISOString(),
             level: 'ERROR',
-            message: `Backend: Unexpected error in generateProject: ${error.message}`
+            message: `Backend: Unexpected error in generateProject: ${errorMessage}`
         });
         generation.verboseLogs.push({
             timestamp: new Date().toISOString(),
             level: 'ERROR',
-            message: `Backend: Error stack trace: ${error.stack}`
+            message: `Backend: Error stack trace: ${error instanceof Error ? error.stack : 'No stack trace available'}`
         });
     }
 }
 
-app.listen(PORT, () => {
-    console.log(`🚀 Lovable Clone server running on http://localhost:${PORT}`);
-    console.log(`📁 Serving frontend from: ${path.join(__dirname, '../frontend')}`);
-    console.log(`📂 Output directory: ${path.join(__dirname, '../output')}`);
-});
-
-module.exports = app;
+export default router;

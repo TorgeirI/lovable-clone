@@ -139,3 +139,13 @@ test-results/
 # Temporary test files
 test-*.ts
 test-*.js
+simple-test.html
+test-debug.html
+
+# Claude Code local settings
+CLAUDE.local.md
+.claude/settings.local.json
+
+# Debug and temporary files
+debug-*.ts
+debug-*.js
