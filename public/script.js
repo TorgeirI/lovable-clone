@@ -447,7 +447,8 @@ class LovableClone {
         // Update selected project state
         this.selectedProject = project;
         
-        // Note: Context UI hidden per user request - projects still continue in background
+        // Update UI for continue mode (without showing context field)
+        this.updateUIForContinueMode(project);
         
         // Load project in preview
         if (project.url) {
@@ -458,13 +459,37 @@ class LovableClone {
         }
     }
 
+    updateUIForContinueMode(project) {
+        const inputLabelEl = document.getElementById('input-label');
+        const promptInputEl = document.getElementById('prompt-input');
+        const generateBtnEl = document.getElementById('generate-btn');
+        
+        const displayName = this.formatProjectName(project.name);
+        
+        // Update input label and placeholder
+        if (inputLabelEl) {
+            inputLabelEl.textContent = 'What would you like to add or modify?';
+        }
+        
+        if (promptInputEl) {
+            promptInputEl.placeholder = `Describe changes or additions to ${displayName}... (e.g., 'Add a dark mode toggle' or 'Change the color scheme to blue')`;
+        }
+        
+        // Update button text
+        if (generateBtnEl) {
+            const btnTextEl = generateBtnEl.querySelector('.btn-text');
+            const btnIconEl = generateBtnEl.querySelector('.btn-icon');
+            if (btnTextEl && btnIconEl) {
+                btnIconEl.textContent = '🔄';
+                btnTextEl.textContent = 'Continue Building';
+            }
+        }
+    }
+
     showProjectContext(project) {
         const contextEl = document.getElementById('selected-project-context');
         const projectNameEl = document.getElementById('context-project-name');
         const projectDetailsEl = document.getElementById('context-project-details');
-        const inputLabelEl = document.getElementById('input-label');
-        const promptInputEl = document.getElementById('prompt-input');
-        const generateBtnEl = document.getElementById('generate-btn');
         
         if (contextEl && projectNameEl && projectDetailsEl) {
             // Show context
@@ -477,26 +502,10 @@ class LovableClone {
             const createdDate = this.formatProjectDate(project);
             const fileTypes = this.getProjectFileTypes(project);
             projectDetailsEl.textContent = `${project.fileCount} files (${fileTypes}) • Created ${createdDate}`;
-            
-            // Update input label and placeholder
-            if (inputLabelEl) {
-                inputLabelEl.textContent = 'What would you like to add or modify?';
-            }
-            
-            if (promptInputEl) {
-                promptInputEl.placeholder = `Describe changes or additions to ${displayName}... (e.g., 'Add a dark mode toggle' or 'Change the color scheme to blue')`;
-            }
-            
-            // Update button text
-            if (generateBtnEl) {
-                const btnTextEl = generateBtnEl.querySelector('.btn-text');
-                const btnIconEl = generateBtnEl.querySelector('.btn-icon');
-                if (btnTextEl && btnIconEl) {
-                    btnIconEl.textContent = '🔄';
-                    btnTextEl.textContent = 'Continue Building';
-                }
-            }
         }
+        
+        // Use the separate UI update function
+        this.updateUIForContinueMode(project);
     }
 
     clearProjectSelection() {
